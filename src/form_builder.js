@@ -8,7 +8,6 @@
 	    options: {
 	        fields: [],
 	        buttons: [],
-	        align: 'block',
 	        field_wrapper_name:'bootstrap',
 	        //field_wrapper_function:null, //is the function that wraps form elements - used to bootstrap wrap form fields.
 	        field_wrapper_functions:{},
@@ -43,8 +42,6 @@
 		{
 			
 		},
-	    
-	    _field_wrappers : null,
 	    
 	    _getRandomNumber: function (){
 	        return Math.floor(Math.random() * 9999);
@@ -146,8 +143,8 @@
 	    _build_form: function(){
 		    var self = this;
 		    
-	    	self._field_wrappers = $.extend(self._field_wrapper_presets, self.options.field_wrapper_functions); //merge wrappers
-	    	var field_wrapper_function = self._field_wrappers[self.options.field_wrapper_name];
+	    	var field_wrappers_merged = $.extend(self._field_wrapper_presets, self.options.field_wrapper_functions); //merge wrappers
+	    	var field_wrapper_function = field_wrappers_merged[self.options.field_wrapper_name];
 	    	
 	        var form = $("<form role='form' />").addClass(self.options.classNames);
 	        
@@ -169,7 +166,8 @@
 	    	var self = this;
 	        var items = [];
 	        $.each(self.options.fields, function(index, field) {
-	
+	        	field.id = 'form_field_' + (field.id?field.id:field.name); 
+	        	
 	            var item = null;
 	            //var adjustedFormElement = addNameAndID( item );
 	
@@ -177,7 +175,7 @@
 	
 	                case 'radio':
 	                    item = $("<div/>");
-	                    item.append(self._create_radios(field.name, field.radios));
+	                    item.append(self._create_radios(field.id, field.name, field.radios));
 	                    break;
 	
 	                case 'select':
@@ -198,7 +196,7 @@
 	
 	                case 'checkbox':
 	                    item = $("<div/>");
-	                    item.append(self._create_checkboxes(field.name, field.checkboxes));
+	                    item.append(self._create_checkboxes(field.id, field.name, field.checkboxes));
 	                    break;
 	
 	                case 'file':
@@ -261,7 +259,7 @@
 		        		{
 		        			'class':'form-control', 
 		        			'name':attrs.name, 
-		        			'id':'form_field_' + (attrs.id?attrs.id:attrs.name),
+		        			'id': attrs.id,
 		        			//'data-extra-attrs': attrs
 	        			}
     				);
@@ -311,7 +309,7 @@
 	        return items;
 	    },
 	    
-	    _create_checkboxes: function (name, checkboxes) {
+	    _create_checkboxes: function (id, name, checkboxes) {
 	        var items = [];
 	        $.each(checkboxes, function(index, checkbox) {
 	            var item = 
@@ -319,7 +317,7 @@
 	                    .append(
 	                        $("<label/>")
 	                        .append(
-	                            "<input type='checkbox' id='" + checkbox.id + "' name='" + name + "[" + items.length + "]' value='" + (checkbox.value || checkbox.label) + "'>" + checkbox.label + "</input>"
+	                            "<input type='checkbox' id='" + id + "_" + items.length + "' name='" + name + "[" + items.length + "]' value='" + (checkbox.value || checkbox.label) + "'>" + checkbox.label + "</input>"
 	                        )
 	                    );
 	            items.push(item);
@@ -327,7 +325,7 @@
 	        return items;
 	    },
 	    
-	    _create_radios: function (name, radios) {
+	    _create_radios: function (id, name, radios) {
 	        var items = [];
 	        $.each(radios, function(index, radio) {
 	            var item = 
@@ -335,7 +333,7 @@
 	                    .append(
 	                        $("<label/>")
 	                        .append(
-	                            "<input type='radio' id='" + radio.id + "' name='" + name + "' value='" + (radio.value || radio.label) + "'>" + radio.label + "</input>"
+	                            "<input type='radio' id='" + id + "_" + items.length + "' name='" + name + "' value='" + (radio.value || radio.label) + "'>" + radio.label + "</input>"
 	                        )
 	                    );
 	            items.push(item);
