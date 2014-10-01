@@ -105,28 +105,52 @@
 	            items.push(item);
 	        });
 	        
-	        return $("<div class='form-group button-set' />")
-	        	.append(
-	        			$("<div class='col-sm-12' />")
-	        				.append(items)
-    			);
+	        return (
+	        		$("<div />")
+	        		.addClass('form-group button-set')
+	        		.append(
+	        				$("<div />")
+	        					.addClass('col-sm-12')
+	        					.append(items)
+	        		)
+	        );
 	    },
 	
 	    _get_helper_block: function(help_text) {
-	        return (help_text?$("<p class='help-block'>" + help_text + "</p>") : null);
+	        return (
+	        		help_text?
+	        				$("<p />")
+	        					.addClass('help-block')
+	        					.text(help_text)
+        			: 
+        					null
+	        );
 	    },
 	
 	    _get_validation_icon: function (){
-	       return $("<span class='glyphicon form-control-feedback'></span>");
+	       return (
+	    		   $("<span/>")
+	    		   		.addClass('glyphicon form-control-feedback')
+	       );
 	    },
 	
 	    _get_form_field_group: function(options){
 	    	options = options?options:{};
-	        return $("<div class='form-group'/>").addClass(options.classNames);
+	        return (
+	        		$("<div/>")
+	        			.addClass('form-group')
+	        			.addClass(options.classNames)
+	        );
 	    },
 	    
 	    _get_label: function(text){
-	        return (text?$("<label class='control-label'>" + text + "</label>"):null);
+	        return (
+	        		text?
+	        				$("<label/>")
+	        					.text(text) 
+	        					.addClass('control-label')
+    				:null
+	        );
 	    },
 	    
 	    /*_get_json_to_field_groups: function(attrs){
@@ -146,7 +170,8 @@
 	    	var field_wrappers_merged = $.extend(self._field_wrapper_presets, self.options.field_wrapper_functions); //merge wrappers
 	    	var field_wrapper_function = field_wrappers_merged[self.options.field_wrapper_name];
 	    	
-	        var form = $("<form role='form' />").addClass(self.options.classNames);
+	        var form = $("<form role='form' />")
+	        	.addClass(self.options.classNames);
 	        
 	        var field_groups = [];
 	        $.each(self._build_form_fields(), function(index, item)
@@ -313,7 +338,8 @@
 	        var items = [];
 	        $.each(checkboxes, function(index, checkbox) {
 	            var item = 
-	                $("<div class='checkbox' />")
+	                $("<div/>")
+	                	.addClass('checkbox')
 	                    .append(
 	                        $("<label/>")
 	                        .append(
@@ -329,7 +355,8 @@
 	        var items = [];
 	        $.each(radios, function(index, radio) {
 	            var item = 
-	                $("<div class='radio' />")
+	                $("<div/>")
+	                	.addClass("radio")
 	                    .append(
 	                        $("<label/>")
 	                        .append(
