@@ -6,14 +6,18 @@
 	$.widget("kel.form_builder", {
 
 	    options: {
+	    	attrs:{}, //form attributes
 	        fields: [],
 	        buttons: [],
 	        field_wrapper_name:'bootstrap',
 	        //field_wrapper_function:null, //is the function that wraps form elements - used to bootstrap wrap form fields.
 	        field_wrapper_functions:{},
+	        on_events:{
+	        	field_created:null
+	        }
 	    },
 	    
-	    _next_id:0,
+	    _next_auto_id:0,
 	    //_ids_used:[],
 		
 		_create: function () {
@@ -23,10 +27,10 @@
 			self._field_wrapper_presets = {
 
 	            'bootstrap': function(form_field_element, field_attrs) {
-	                    var wrapper = self._get_form_field_group(field_attrs).append(
+	                    var wrapper = self._get_form_field_group().append(
 	                        self._get_label(field_attrs.label),
 	                        form_field_element,
-	                        self._get_validation_icon(),
+	                        //self._get_validation_icon(),
 	                        self._get_helper_block(field_attrs.helpblock)
 	                    );
 	                    
@@ -34,8 +38,9 @@
 	                }
 			};
 			
-			
-		    container.append(self._build_form());
+			var form = self._build_form();
+		    container.append(form);
+		    return form;
 		},
 		
 		_destroy: function()
@@ -47,7 +52,7 @@
 	        return Math.floor(Math.random() * 9999);
 	    },
 	    
-	    _get_next_id : function()
+	    _get_next_auto_id : function()
 	    {
 	    	var self = this;
 	    	/*var id = self._getRandomNumber();
@@ -67,8 +72,8 @@
 				return id;
 			}
 	    	
-			return self._get_next_id();*/
-	    	return self._next_id++;
+			return self._get_next_auto_id();*/
+	    	return self._next_auto_id++;
 	    	
 	    },
 	
@@ -81,27 +86,33 @@
 	            	._build_element_from_json(
             			'button', 
             			{
-            				id: (button.id || 'button_' + self._get_next_id()), 
+            				id: (button.id || 'button_' + self._get_next_auto_id()), 
             				'class': 'btn' + (button.validationState?' btn-' + button.validationState:'') + ' btn-' + (button.size || 'lg')
 	        			}
 	            	)
 	            	.text((button.label || 'submit'))
-	            	.addClass(button.classNames)
 	            	;
+	            
+	            if(button.attrs)
+            	{
+	            	self._append_attrs_from_json(item,button.attrs);
+            	}
 	            
 	            if (button.onSubmit) {
 	
-	                $(document)
+	                item
 	                	.on(
-	            			'click', 
-	            			'#' + item.attr('id'),  
+	            			'click',   
 	            			function(e) {
 	            				e.preventDefault();
-	            				var formValues = $('#' + e.target.id ).closest('form').serializeArray();
-	            				button.onSubmit(formValues);
+	            				var form = $(item).closest('form');
+	            				button.onSubmit(form, form.serializeArray());
 	            			}
 	                	);
 	            }
+	            if(button.onClick)
+	            	item.on("click", button.onClick);
+	            
 	            items.push(item);
 	        });
 	        
@@ -130,16 +141,16 @@
 	    _get_validation_icon: function (){
 	       return (
 	    		   $("<span/>")
-	    		   		.addClass('glyphicon form-control-feedback')
+	    		   		.addClass('form-control-feedback')
 	       );
 	    },
 	
-	    _get_form_field_group: function(options){
-	    	options = options?options:{};
+	    _get_form_field_group: function(){
 	        return (
 	        		$("<div/>")
 	        			.addClass('form-group')
-	        			.addClass(options.classNames)
+	        			.addClass('has-feedback')
+	        			.addClass()
 	        );
 	    },
 	    
@@ -170,8 +181,9 @@
 	    	var field_wrappers_merged = $.extend(self._field_wrapper_presets, self.options.field_wrapper_functions); //merge wrappers
 	    	var field_wrapper_function = field_wrappers_merged[self.options.field_wrapper_name];
 	    	
-	        var form = $("<form role='form' />")
-	        	.addClass(self.options.classNames);
+	        var form = $("<form role='form' />");
+	        
+	        self._append_attrs_from_json(form, self.options.attrs);
 	        
 	        var field_groups = [];
 	        $.each(self._build_form_fields(), function(index, item)
@@ -191,7 +203,9 @@
 	    	var self = this;
 	        var items = [];
 	        $.each(self.options.fields, function(index, field) {
-	        	field.id = 'form_field_' + (field.id?field.id:field.name); 
+	        	field_attrs = $.extend({},field.attrs);
+	        	
+	        	field_attrs.id = (field_attrs.id?field_attrs.id:(field_attrs.name?(field_attrs.name):null));
 	        	
 	            var item = null;
 	            //var adjustedFormElement = addNameAndID( item );
@@ -200,7 +214,7 @@
 	
 	                case 'radio':
 	                    item = $("<div/>");
-	                    item.append(self._create_radios(field.id, field.name, field.radios));
+	                    item.append(self._create_radios(field_attrs.id, field_attrs.name, field_attrs.radios));
 	                    break;
 	
 	                case 'select':
@@ -209,19 +223,19 @@
 	                    			self._build_element_form_field_from_json(
 	                    					'select', 
 	                    					{
-	                    						name:field.name, 
-	                    						id: field.id
+	                    						name:field_attrs.name, 
+	                    						id: field_attrs.id
 	                						}
 	            					),
-	            					field, 
+	            					field_attrs, 
 	            					['type','multiple','required']
 	                    	);
-	                    item.append(self._create_options(field.options));
+	                    item.append(self._create_options(field_attrs.options));
 	                    break;
 	
 	                case 'checkbox':
 	                    item = $("<div/>");
-	                    item.append(self._create_checkboxes(field.id, field.name, field.checkboxes));
+	                    item.append(self._create_checkboxes(field_attrs.id, field_attrs.name, field_attrs.checkboxes));
 	                    break;
 	
 	                case 'file':
@@ -229,11 +243,11 @@
 	                    		self._build_element_form_field_from_json(
 	                        		'input', 
 	                        		{
-	                        			name:field.name, 
-	                        			id: field.id
+	                        			name:field_attrs.name, 
+	                        			id: field_attrs.id
 	                    			}
 	                        ),
-	                        field, 
+	                        field_attrs, 
 	                        ['required']
 	                    );
 	                    break;
@@ -243,11 +257,11 @@
 	                    		self._build_element_form_field_from_json(
 	                        		'textarea', 
 	                        		{
-	                        			name:field.name, 
-	                        			id: field.id
+	                        			name:field_attrs.name, 
+	                        			id: field_attrs.id
 	                    			}
 	                    	),
-	                        field, 
+	                        field_attrs, 
 	                        ['rows', 'required', 'maxLength']
 	                    );
 	                    break;
@@ -257,19 +271,22 @@
 	                    		self._build_element_form_field_from_json(
 	                        		'input', 
 	                        		{
-	                        			name:field.name, 
-	                        			id: field.id
+	                        			name:field_attrs.name, 
+	                        			id: field_attrs.id
 	                    			}
 	                    	),
-	                        field, 
-	                        ['type','placeholder', 'required', 'pattern', 'maxLength']
+	                        field_attrs 
+	                        //['type','placeholder', 'required', 'pattern', 'maxLength']
 	                    );
 	                    break;
 	            }
 	            
 	            if(item)
 	            {
-	            	item.data('extra-attrs', field);
+	            	item.data('extra-attrs', field.attrs);
+	            	if(self.options.on_events.field_created)
+	            		self.options.on_events.field_created(item);
+	            		
 	                items.push(item);
 	            }
 	
@@ -301,24 +318,29 @@
 	        for(var name in attrs)        
 	        {
 	            var is_ok = false;
-	            if(attrs_allowed)
-	            {
-	                for(var i=0;i<attrs_allowed.length;i++)
-	                {
-	                    var match_name = attrs_allowed[i];                 
-	                    if(name == match_name)
-	                    {
-	                        is_ok = true;
-	                        break;
-	                    }
-	                }
-	            }
-	            else
-	                is_ok = true; //no allowed list
-	            
+	            if(attrs[name] !== null)
+            	{
+		            if(attrs_allowed)
+		            {
+		                for(var i=0;i<attrs_allowed.length;i++)
+		                {
+		                    var match_name = attrs_allowed[i];                 
+		                    if(name == match_name)
+		                    {
+		                        is_ok = true;
+		                        break;
+		                    }
+		                }
+		            }
+		            else
+		                is_ok = true; //no allowed list
+            	}
 	            if(is_ok)
 	                element.attr(name, attrs[name]);
 	        }
+	        
+	        element.attr("required")?element.attr("aria-required",true):null;
+	
 	        return element;
 	    },
 	    
@@ -343,7 +365,9 @@
 	                    .append(
 	                        $("<label/>")
 	                        .append(
-	                            "<input type='checkbox' id='" + id + "_" + items.length + "' name='" + name + "[" + items.length + "]' value='" + (checkbox.value || checkbox.label) + "'>" + checkbox.label + "</input>"
+	                            $("<input type='checkbox' value='" + (checkbox.value || checkbox.label) + "'>" + checkbox.label + "</input>")
+	                            	.attr('name',name?name + '[' + items.length + ']':null)
+	                            	.attr('id', checkbox.id?checkbox.id:(id?(id + "_" + items.length):null))
 	                        )
 	                    );
 	            items.push(item);
@@ -360,7 +384,9 @@
 	                    .append(
 	                        $("<label/>")
 	                        .append(
-	                            "<input type='radio' id='" + id + "_" + items.length + "' name='" + name + "' value='" + (radio.value || radio.label) + "'>" + radio.label + "</input>"
+	                            $("<input type='radio' value='" + (radio.value || radio.label) + "'>" + radio.label + "</input>")
+	                            	.attr('name',name?name:null)
+                    				.attr('id', radio.id?radio.id:(id?(id + "_" + items.length):null))
 	                        )
 	                    );
 	            items.push(item);
