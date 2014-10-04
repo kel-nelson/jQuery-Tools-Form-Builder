@@ -6,18 +6,20 @@
 	$.widget("kel.form_builder", {
 
 	    options: {
-	    	attrs:{}, //form attributes
+	    	attrs:{}, //extra form attributes
 	        fields: [],
 	        buttons: [],
 	        field_wrapper_name:'bootstrap',
 	        //field_wrapper_function:null, //is the function that wraps form elements - used to bootstrap wrap form fields.
-	        field_wrapper_functions:{},
+	        field_wrappers:{},
 	        on_events:{
 	        	field_created:null
 	        }
 	    },
 	    
+	    _namespace:'kfb',
 	    _next_auto_id:0,
+	    _field_wrapper_selected:null,
 	    //_ids_used:[],
 		
 		_create: function () {
@@ -26,16 +28,56 @@
 			
 			self._field_wrapper_presets = {
 
-	            'bootstrap': function(form_field_element, field_attrs) {
-	                    var wrapper = self._get_form_field_group().append(
-	                        self._get_label(field_attrs.label),
-	                        form_field_element,
-	                        //self._get_validation_icon(),
-	                        self._get_helper_block(field_attrs.helpblock)
-	                    );
+	            'bootstrap': {
+	            		wrapper_func: function(form_field_element, field_obj) {
 	                    
-	                    return wrapper;
-	                }
+	                	    var _get_helper_block = function(help_text) {
+	                	        return (
+	                	        		help_text?
+	                	        				$("<p />")
+	                	        					.addClass('help-block')
+	                	        					.text(help_text)
+	                        			: 
+	                        					null
+	                	        );
+	                	    };
+	                	
+	                	    /*var _get_validation_icon = function (){
+	                	       return (
+	                	    		   $("<span/>")
+	                	    		   		.addClass('form-control-feedback')
+	                	       );
+	                	    };*/
+	                	
+	                	    var _get_form_field_group = function(){
+	                	        return (
+	                	        		$("<div/>")
+	                	        			.addClass('form-group')
+	                	        			.addClass('has-feedback')
+	                	        			.addClass()
+	                	        );
+	                	    };
+	                	    
+	                	    var _get_label = function(text){
+	                	        return (
+	                	        		text?
+	                	        				$("<label/>")
+	                	        					.text(text) 
+	                	        					.addClass('control-label')
+	                    				:null
+	                	        );
+	                	    };	                        
+	                    
+	                    
+		                    return (
+		                    		_get_form_field_group().append(
+		                    				_get_label(field_obj.options.label),
+		                    				form_field_element,
+		                    				_get_helper_block(field_obj.options.helpblock)
+		                    		)
+		                    );
+	            		}
+	            }
 			};
 			
 			var form = self._build_form();
@@ -82,9 +124,8 @@
 	        var items = [];
 	        $.each(buttons, function(index, button) {
 	    
-	            var item = self
-	            	._build_element_from_json(
-            			'button', 
+	            var item = $(
+            			'<button/>', 
             			{
             				id: (button.id || 'button_' + self._get_next_auto_id()), 
             				'class': 'btn' + (button.validationState?' btn-' + button.validationState:'') + ' btn-' + (button.size || 'lg')
@@ -126,61 +167,16 @@
 	        		)
 	        );
 	    },
-	
-	    _get_helper_block: function(help_text) {
-	        return (
-	        		help_text?
-	        				$("<p />")
-	        					.addClass('help-block')
-	        					.text(help_text)
-        			: 
-        					null
-	        );
-	    },
-	
-	    _get_validation_icon: function (){
-	       return (
-	    		   $("<span/>")
-	    		   		.addClass('form-control-feedback')
-	       );
-	    },
-	
-	    _get_form_field_group: function(){
-	        return (
-	        		$("<div/>")
-	        			.addClass('form-group')
-	        			.addClass('has-feedback')
-	        			.addClass()
-	        );
-	    },
-	    
-	    _get_label: function(text){
-	        return (
-	        		text?
-	        				$("<label/>")
-	        					.text(text) 
-	        					.addClass('control-label')
-    				:null
-	        );
-	    },
-	    
-	    /*_get_json_to_field_groups: function(attrs){
-	    	var self = this;
-	        var items = [];
-	        $.each(self.options.fields, function(index, item) {
-	           var form_element = self.get_json_to_form_fields();
-	            
-	        });
-	        
-	        return items;
-	    },*/
 	    
 	    _build_form: function(){
 		    var self = this;
 		    
-	    	var field_wrappers_merged = $.extend(self._field_wrapper_presets, self.options.field_wrapper_functions); //merge wrappers
-	    	var field_wrapper_function = field_wrappers_merged[self.options.field_wrapper_name];
+	    	var field_wrappers_merged = $.extend(self._field_wrapper_presets, self.options.field_wrappers); //merge wrappers
+	    	self._field_wrapper_selected = field_wrappers_merged[self.options.field_wrapper_name];
 	    	
+	    	if(!(self._field_wrapper_selected))
+	    		throw "can't find wrapper " + self.options.field_wrapper_name + ".";
+	    		
 	        var form = $("<form role='form' />");
 	        
 	        self._append_attrs_from_json(form, self.options.attrs);
@@ -188,8 +184,8 @@
 	        var field_groups = [];
 	        $.each(self._build_form_fields(), function(index, item)
 	        		{
-	        			var field_attrs = item.data('extra-attrs');
-	        			field_groups.push(field_wrapper_function(item, field_attrs));  
+	        			var field_obj = item.data(self._namespace + '_field_obj');
+	        			field_groups.push(self._field_wrapper_selected.wrapper_func(item, field_obj));  
 	        		}
 	        );
 	        
@@ -205,7 +201,8 @@
 	        $.each(self.options.fields, function(index, field) {
 	        	field_attrs = $.extend({},field.attrs);
 	        	
-	        	field_attrs.id = (field_attrs.id?field_attrs.id:(field_attrs.name?(field_attrs.name):null));
+	        	field_attrs.id = (field_attrs.id?field_attrs.id:(field_attrs.name?(field_attrs.name):'form_field_' + self._get_next_auto_id()));
+	        	field_attrs.name = (field_attrs.name?field_attrs.name:field_attrs.id);
 	        	
 	            var item = null;
 	            //var adjustedFormElement = addNameAndID( item );
@@ -214,76 +211,76 @@
 	
 	                case 'radio':
 	                    item = $("<div/>");
-	                    item.append(self._create_radios(field_attrs.id, field_attrs.name, field_attrs.radios));
+	                    item.append(self._create_radios(field_attrs));
 	                    break;
 	
 	                case 'select':
 	                    item = 
 	                    	self._append_attrs_from_json(
-	                    			self._build_element_form_field_from_json(
-	                    					'select', 
+	                    			self._append_element_form_field_from_json(
+	                    					$('<select />'), 
 	                    					{
 	                    						name:field_attrs.name, 
 	                    						id: field_attrs.id
 	                						}
 	            					),
-	            					field_attrs, 
-	            					['type','multiple','required']
+	            					field_attrs 
+	            					//['type','multiple','required']
 	                    	);
-	                    item.append(self._create_options(field_attrs.options));
+	                    item.append(self._create_options(field_attrs));
 	                    break;
 	
 	                case 'checkbox':
-	                    item = $("<div/>");
-	                    item.append(self._create_checkboxes(field_attrs.id, field_attrs.name, field_attrs.checkboxes));
+	                    item = $("<div />");
+	                    item.append(self._create_checkboxes(field_attrs));
 	                    break;
 	
 	                case 'file':
 	                    item = self._append_attrs_from_json(
-	                    		self._build_element_form_field_from_json(
-	                        		'input', 
+	                    		self._append_element_form_field_from_json(
+	                    			$('<input />'), 
 	                        		{
 	                        			name:field_attrs.name, 
 	                        			id: field_attrs.id
 	                    			}
 	                        ),
-	                        field_attrs, 
-	                        ['required']
+	                        $.extend({type:field.type},field_attrs)
+	                        //['required']
 	                    );
 	                    break;
 	
 	                case 'textarea':
 	                    item = self._append_attrs_from_json(
-	                    		self._build_element_form_field_from_json(
-	                        		'textarea', 
+	                    		self._append_element_form_field_from_json(
+	                        		$('<textarea />'), 
 	                        		{
 	                        			name:field_attrs.name, 
 	                        			id: field_attrs.id
 	                    			}
-	                    	),
-	                        field_attrs, 
-	                        ['rows', 'required', 'maxLength']
+	                    		),
+	                    		field_attrs 
+	                    		//['rows', 'required', 'maxLength']
 	                    );
 	                    break;
 	
 	                default:
 	                    item = self._append_attrs_from_json(
-	                    		self._build_element_form_field_from_json(
-	                        		'input', 
+	                    		self._append_element_form_field_from_json(
+	                        		$('<input />'), 
 	                        		{
 	                        			name:field_attrs.name, 
 	                        			id: field_attrs.id
 	                    			}
-	                    	),
-	                        field_attrs 
-	                        //['type','placeholder', 'required', 'pattern', 'maxLength']
+	                    		),
+	                    		$.extend({type:field.type},field_attrs) 
+	                    		//['type','placeholder', 'required', 'pattern', 'maxLength']
 	                    );
 	                    break;
 	            }
 	            
 	            if(item)
 	            {
-	            	item.data('extra-attrs', field.attrs);
+	            	item.data(self._namespace + '_field_obj', field);
 	            	if(self.options.on_events.field_created)
 	            		self.options.on_events.field_created(item);
 	            		
@@ -294,15 +291,13 @@
 	        return items;
 	    },
 	    
-	    _build_element_form_field_from_json: function(tag_name, attrs)
+	    _append_element_form_field_from_json: function(element, attrs)
 	    {
-	        return this._build_element_from_json(
-	        		tag_name, 
-		        		{
-		        			'class':'form-control', 
+	    	var self = this;
+	        return this._append_attrs_from_json(element,
+		        		{ 
 		        			'name':attrs.name, 
 		        			'id': attrs.id,
-		        			//'data-extra-attrs': attrs
 	        			}
     				);
 	    },
@@ -344,7 +339,8 @@
 	        return element;
 	    },
 	    
-	    _create_options: function (options) {
+	    _create_options: function (field_attrs) {
+	    	var options = field_attrs.options;
 	        var items = [];
 	        $.each(options, function(index, option) {
 	            var item = $("<option>" +  option.label +"</option>");
@@ -356,7 +352,9 @@
 	        return items;
 	    },
 	    
-	    _create_checkboxes: function (id, name, checkboxes) {
+	    _create_checkboxes: function (field_attrs) {
+	    	var id = field_attrs.id, name = field_attrs.name, checkboxes = field_attrs.checkboxes;
+	    	var self = this;
 	        var items = [];
 	        $.each(checkboxes, function(index, checkbox) {
 	            var item = 
@@ -366,8 +364,9 @@
 	                        $("<label/>")
 	                        .append(
 	                            $("<input type='checkbox' value='" + (checkbox.value || checkbox.label) + "'>" + checkbox.label + "</input>")
+	                            	.addClass(field_attrs['class'])
 	                            	.attr('name',name?name + '[' + items.length + ']':null)
-	                            	.attr('id', checkbox.id?checkbox.id:(id?(id + "_" + items.length):null))
+	                            	.attr('id', checkbox.id?checkbox.id:(id?(id + "[" + items.length + "]"):null))
 	                        )
 	                    );
 	            items.push(item);
@@ -375,7 +374,9 @@
 	        return items;
 	    },
 	    
-	    _create_radios: function (id, name, radios) {
+	    _create_radios: function (field_attrs) {
+	    	var id = field_attrs.id, name = field_attrs.name, radios = field_attrs.radios;
+	    	var self = this;
 	        var items = [];
 	        $.each(radios, function(index, radio) {
 	            var item = 
@@ -385,8 +386,9 @@
 	                        $("<label/>")
 	                        .append(
 	                            $("<input type='radio' value='" + (radio.value || radio.label) + "'>" + radio.label + "</input>")
+	                            	.addClass(field_attrs['class'])
 	                            	.attr('name',name?name:null)
-                    				.attr('id', radio.id?radio.id:(id?(id + "_" + items.length):null))
+                    				.attr('id', radio.id?radio.id:(id?(id + "[" + items.length + "]"):null))
 	                        )
 	                    );
 	            items.push(item);
