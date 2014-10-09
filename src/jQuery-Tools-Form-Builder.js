@@ -3,7 +3,7 @@
 
 (function($) {
 
-	$.widget("kel.form_builder", {
+	$.widget("handy.form_builder", {
 
 	    options: {
 	    	attrs:{}, //extra form attributes
@@ -17,7 +17,7 @@
 	        }
 	    },
 	    
-	    _namespace:'kfb',
+	    _namespace:'hfb',
 	    _next_auto_id:0,
 	    _field_wrapper_selected:null,
 	    //_ids_used:[],
